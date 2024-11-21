@@ -40,6 +40,7 @@ Flags:
 ```
 
 example:
+
 ```bash
 
 # get all information about the players that said the phrase 'https?://bot.xyz\..+'

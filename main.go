@@ -107,13 +107,11 @@ func (cli *CLI) RunE(cmd *cobra.Command, args []string) error {
 			ipList = deduplicate(ipList)
 		}
 		return cli.print(cmd, ipList)
-	}
-
-	if cli.cfg.Extended {
+	} else if cli.cfg.Extended {
 		if cli.cfg.Deduplicate {
 			extendedPlayerList = deduplicate(extendedPlayerList)
 		}
-		return cli.print(cmd, extendedPlayerList.ToPlayerList())
+		return cli.print(cmd, extendedPlayerList)
 	}
 
 	// not extended list of players

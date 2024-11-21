@@ -321,7 +321,7 @@ type PlayerExtended struct {
 }
 
 func (p PlayerExtended) String() string {
-	return fmt.Sprintf("%s:<%s> {%d} %s: %s", p.File, p.IP, p.ID, p.Nickname, p.Text)
+	return fmt.Sprintf("%s:<%s> {%d} %s: %s", p.File, p.ID, p.IP, p.Nickname, p.Text)
 }
 
 type PlayerExtendedList []PlayerExtended

@@ -43,13 +43,13 @@ example:
 ```bash
 
 # get all information about the players that said the phrase 'https?://bot.xyz\..+'
-./twlog-who-said -e -p 'https?://bot.xyz\..+'
+./twlog-who-said -e -p 'https?://bot.xyz'
 
 # get all information of all players that said the phrase 'https?://bot.xyz\..+' but deduplicate all entries
-./twlog-who-said -e -D -p 'https?://bot.xyz\..+'
+./twlog-who-said -e -D -p 'https?://bot.xyz'
 
 # get all deduplicated ip addresses of all players that said the phrase 'https?://bot.xyz\..+'
-./twlog-who-said -D -p 'https?://bot.xyz\..+' -i -o json
+./twlog-who-said -D -p 'https?://bot.xyz' -i -o json
 ````
 
 ## building and installing from source

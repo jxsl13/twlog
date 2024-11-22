@@ -25,12 +25,14 @@ Environment variables:
   OUTPUT             output format, one of 'json' or 'text' (default: "text")
   ARCHIVE_REGEX      regex to match archive files in the search dir (default: "\\.(7z|bz2|gz|tar|xz|zip|xz|zst|lz)$")
   INCLUDE_ARCHIVE    search inside archive files (default: "false")
+  CONCURRENCY        number of concurrent workers to use (default: "{{number of cpu cores}}")
 
 Usage:
   twlog-who-said [flags]
 
 Flags:
   -a, --archive-regex string   regex to match archive files in the search dir (default "\\.(7z|bz2|gz|tar|xz|zip|xz|zst|lz)$")
+  -t, --concurrency int        number of concurrent workers to use (default {{number of cpu cores}})
   -c, --config string          .env config file path (or via env variable CONFIG)
   -D, --deduplicate            deduplicate objects based on all fields
   -e, --extended               add two additional fields, file and id to the output

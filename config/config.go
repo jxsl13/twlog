@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"runtime"
 	"strings"
 )
 
@@ -20,6 +21,7 @@ func NewConfig() Config {
 		Deduplicate:  false,
 		Output:       FormatText,
 		ArchiveRegex: `\.(7z|bz2|gz|tar|xz|zip|xz|zst|lz)$`,
+		Concurrency:  max(1, runtime.NumCPU()),
 	}
 }
 
@@ -36,6 +38,7 @@ type Config struct {
 	ArchiveRegex    string         `koanf:"archive.regex" short:"a" description:"regex to match archive files in the search dir"`
 	ArchiveRegexp   *regexp.Regexp `koanf:"-"`
 	IncludeArchives bool           `koanf:"include.archive" short:"A" description:"search inside archive files"`
+	Concurrency     int            `koanf:"concurrency" short:"t" description:"number of concurrent workers to use"`
 }
 
 func (cfg *Config) Validate() error {
@@ -88,6 +91,10 @@ func (cfg *Config) Validate() error {
 			return fmt.Errorf("invalid archive regex: %w", err)
 		}
 		cfg.ArchiveRegexp = re
+	}
+
+	if cfg.Concurrency < 1 {
+		return errors.New("concurrency must be greater than 0")
 	}
 
 	return nil

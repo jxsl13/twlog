@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/icza/backscanner"
@@ -36,30 +37,52 @@ func main() {
 }
 
 func NewRootCmd(ctx context.Context) *cobra.Command {
+	cctx, cancelCause := context.WithCancelCause(ctx)
 	cli := &CLI{
-		ctx: ctx,
-		cfg: config.NewConfig(),
+		ctx:         cctx,
+		CancelCause: cancelCause,
+		cfg:         config.NewConfig(),
 	}
 
 	cmd := cobra.Command{
 		Use: filepath.Base(os.Args[0]),
 	}
-	cmd.PreRunE = cli.PrerunE(&cmd)
+	cmd.PreRunE = cli.PreRunE(&cmd)
 	cmd.RunE = cli.RunE
+	cmd.PostRunE = cli.PostRunE
 	return &cmd
 }
 
 type CLI struct {
-	ctx context.Context
-	cfg config.Config
+	ctx         context.Context
+	CancelCause context.CancelCauseFunc
+	cfg         config.Config
 }
 
-func (cli *CLI) PrerunE(cmd *cobra.Command) func(*cobra.Command, []string) error {
+func (cli *CLI) PreRunE(cmd *cobra.Command) func(*cobra.Command, []string) error {
 	parser := cliconfig.RegisterFlags(&cli.cfg, false, cmd)
 	return func(cmd *cobra.Command, args []string) error {
 		log.SetOutput(cmd.ErrOrStderr()) // redirect log output to stderr
 		return parser()                  // parse registered commands
 	}
+}
+
+func (cli *CLI) PostRunE(*cobra.Command, []string) error {
+	cli.CancelCause(context.Canceled) // cleanup only
+	return nil
+}
+
+func (cli *CLI) checkShutDown() error {
+	select {
+	case <-cli.ctx.Done():
+		return cli.ctx.Err()
+	default:
+		return nil
+	}
+}
+
+func (cli *CLI) abort(err error) {
+	cli.CancelCause(err)
 }
 
 func (cli *CLI) RunE(cmd *cobra.Command, args []string) error {
@@ -74,6 +97,11 @@ func (cli *CLI) RunE(cmd *cobra.Command, args []string) error {
 
 	// collect log file and archive paths
 	err = filepath.WalkDir(entryDir, func(path string, info os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		err = cli.checkShutDown()
 		if err != nil {
 			return err
 		}
@@ -101,54 +129,115 @@ func (cli *CLI) RunE(cmd *cobra.Command, args []string) error {
 	slices.Sort(files)
 	slices.Sort(archives)
 
+	wg := &sync.WaitGroup{}
+	mu := &sync.Mutex{}
 	extendedPlayerList := make(PlayerExtendedList, 0, 16)
 
-	for _, file := range files {
-		filePlayers, err := searchPhraseInFile(file, cli.cfg.PhraseRegexp)
-		if err != nil {
-			return fmt.Errorf("failed to search phrase in file %s: %w", file, err)
-		}
-		extendedPlayerList = append(extendedPlayerList, filePlayers...)
-	}
+	concurrency := make(chan struct{}, cli.cfg.Concurrency)
 
-	for _, file := range archives {
-		err = archive.Walk(file, func(path string, info fs.FileInfo, r io.Reader, err error) error {
+	wg.Add(len(files))
+	for _, file := range files {
+		exec := func() {
+			concurrency <- struct{}{}
+			defer func() {
+				<-concurrency
+				wg.Done()
+			}()
+
+			filePlayers, err := searchPhraseInFile(file, cli.cfg.PhraseRegexp)
+			if err != nil {
+				cli.abort(fmt.Errorf("failed to search phrase in file %s: %w", file, err))
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			extendedPlayerList = append(extendedPlayerList, filePlayers...)
+		}
+
+		if cli.cfg.Concurrency > 1 {
+			// only run in parallel if concurrency is greater than 1
+			go exec()
+		} else {
+			exec()
+			err = cli.checkShutDown()
 			if err != nil {
 				return err
 			}
-
-			if !info.Mode().IsRegular() {
-				// skip dirs & symlinks
-				return nil
-			}
-
-			if !cli.cfg.FileRegexp.MatchString(path) {
-				return nil
-			}
-
-			// matching file in archive
-			// read file into memory only if the file path matches the regex
-			memFile, err := archive.NewFile(r, info.Size())
-			if err != nil {
-				return fmt.Errorf("failed to read file %s from archive: %w", path, err)
-			}
-
-			filePath := fmt.Sprintf("%s@%s", file, path)
-			filePlayers, err := searchPhrase(filePath, memFile, cli.cfg.PhraseRegexp)
-			if err != nil {
-				return fmt.Errorf("failed to search phrase in archive file %s: %w", filePath, err)
-			}
-			extendedPlayerList = append(extendedPlayerList, filePlayers...)
-
-			return nil
-		})
-		if err != nil {
-			if errors.Is(err, archive.ErrUnsupportedArchive) {
-				log.Printf("skipping unsupported archive: %s", file)
-				continue
-			}
-			return fmt.Errorf("failed to walk archive %s: %w", file, err)
 		}
+	}
+
+	wg.Add(len(archives))
+	for _, file := range archives {
+		exec := func() {
+			concurrency <- struct{}{}
+			defer func() {
+				<-concurrency
+				wg.Done()
+			}()
+
+			err = archive.Walk(file, func(path string, info fs.FileInfo, r io.Reader, err error) error {
+				if err != nil {
+					return err
+				}
+
+				err = cli.checkShutDown()
+				if err != nil {
+					return err
+				}
+
+				if !info.Mode().IsRegular() {
+					// skip dirs & symlinks
+					return nil
+				}
+
+				if !cli.cfg.FileRegexp.MatchString(path) {
+					return nil
+				}
+
+				// matching file in archive
+				// read file into memory only if the file path matches the regex
+				memFile, err := archive.NewFile(r, info.Size())
+				if err != nil {
+					return fmt.Errorf("failed to read file %s from archive: %w", path, err)
+				}
+
+				filePath := fmt.Sprintf("%s@%s", file, path)
+				filePlayers, err := searchPhrase(filePath, memFile, cli.cfg.PhraseRegexp)
+				if err != nil {
+					return fmt.Errorf("failed to search phrase in archive file %s: %w", filePath, err)
+				}
+
+				mu.Lock()
+				defer mu.Unlock()
+				extendedPlayerList = append(extendedPlayerList, filePlayers...)
+
+				return nil
+			})
+			if err != nil {
+				if errors.Is(err, archive.ErrUnsupportedArchive) {
+					log.Printf("skipping unsupported archive: %s", file)
+					return
+				}
+				cli.abort(fmt.Errorf("failed to walk archive %s: %w", file, err))
+			}
+		}
+
+		if cli.cfg.Concurrency > 1 {
+			// only run in parallel if concurrency is greater than 1
+			go exec()
+		} else {
+			exec()
+			err = cli.checkShutDown()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	wg.Wait()
+
+	err = cli.checkShutDown()
+	if err != nil {
+		return err
 	}
 
 	if cli.cfg.IPsOnly {

@@ -15,23 +15,27 @@ const (
 
 func NewConfig() Config {
 	return Config{
-		SearchDir:   ".",
-		FileRegex:   ".*\\.log",
-		Deduplicate: false,
-		Output:      FormatText,
+		SearchDir:    ".",
+		FileRegex:    `.*\.log$`,
+		Deduplicate:  false,
+		Output:       FormatText,
+		ArchiveRegex: `\.(7z|bz2|gz|tar|xz|zip|xz|zst|lz)$`,
 	}
 }
 
 type Config struct {
-	PhraseRegex  string         `koanf:"phrase.regex" short:"p" description:"regex to search for that a player said"`
-	PhraseRegexp *regexp.Regexp `koanf:"-"`
-	SearchDir    string         `koanf:"search.dir" short:"d" description:"directory to search for files recursively"`
-	FileRegex    string         `koanf:"file.regex" short:"f" description:"regex to match files in the search dir"`
-	FileRegexp   *regexp.Regexp `koanf:"-"`
-	Deduplicate  bool           `koanf:"deduplicate" short:"D" description:"deduplicate objects based on all fields"`
-	Extended     bool           `koanf:"extended" short:"e" description:"add two additional fields, file and id to the output"`
-	IPsOnly      bool           `koanf:"ips.only" short:"i" description:"only print IP addresses"`
-	Output       string         `koanf:"output" short:"o" description:"output format, one of 'json' or 'text'"`
+	PhraseRegex     string         `koanf:"phrase.regex" short:"p" description:"regex to search for that a player said"`
+	PhraseRegexp    *regexp.Regexp `koanf:"-"`
+	SearchDir       string         `koanf:"search.dir" short:"d" description:"directory to search for files recursively"`
+	FileRegex       string         `koanf:"file.regex" short:"f" description:"regex to match files in the search dir"`
+	FileRegexp      *regexp.Regexp `koanf:"-"`
+	Deduplicate     bool           `koanf:"deduplicate" short:"D" description:"deduplicate objects based on all fields"`
+	Extended        bool           `koanf:"extended" short:"e" description:"add two additional fields, file and id to the output"`
+	IPsOnly         bool           `koanf:"ips.only" short:"i" description:"only print IP addresses"`
+	Output          string         `koanf:"output" short:"o" description:"output format, one of 'json' or 'text'"`
+	ArchiveRegex    string         `koanf:"archive.regex" short:"a" description:"regex to match archive files in the search dir"`
+	ArchiveRegexp   *regexp.Regexp `koanf:"-"`
+	IncludeArchives bool           `koanf:"include.archive" short:"A" description:"search inside archive files"`
 }
 
 func (cfg *Config) Validate() error {
@@ -76,6 +80,14 @@ func (cfg *Config) Validate() error {
 
 	if cfg.Extended && cfg.IPsOnly {
 		return errors.New("extended and ips only flags are mutually exclusive")
+	}
+
+	if cfg.IncludeArchives || cfg.ArchiveRegex != "" {
+		re, err = regexp.Compile(cfg.ArchiveRegex)
+		if err != nil {
+			return fmt.Errorf("invalid archive regex: %w", err)
+		}
+		cfg.ArchiveRegexp = re
 	}
 
 	return nil

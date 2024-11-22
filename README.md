@@ -16,27 +16,31 @@ go install github.com/jxsl13/twlog-who-said@latest
 ```bash
 $ twlog-who-said --help
 Environment variables:
-  PHRASE_REGEX    regex to search for that a player said
-  SEARCH_DIR      directory to search for files recursively (default: ".")
-  FILE_REGEX      regex to match files in the search dir (default: ".*\\.log")
-  DEDUPLICATE     deduplicate objects based on all fields (default: "false")
-  EXTENDED        add two additional fields, file and id to the output (default: "false")
-  IPS_ONLY        only print IP addresses (default: "false")
-  OUTPUT          output format, one of 'json' or 'text' (default: "text")
+  PHRASE_REGEX       regex to search for that a player said
+  SEARCH_DIR         directory to search for files recursively (default: ".")
+  FILE_REGEX         regex to match files in the search dir (default: ".*\\.log$")
+  DEDUPLICATE        deduplicate objects based on all fields (default: "false")
+  EXTENDED           add two additional fields, file and id to the output (default: "false")
+  IPS_ONLY           only print IP addresses (default: "false")
+  OUTPUT             output format, one of 'json' or 'text' (default: "text")
+  ARCHIVE_REGEX      regex to match archive files in the search dir (default: "\\.(7z|bz2|gz|tar|xz|zip|xz|zst|lz)$")
+  INCLUDE_ARCHIVE    search inside archive files (default: "false")
 
 Usage:
   twlog-who-said [flags]
 
 Flags:
-  -c, --config string         .env config file path (or via env variable CONFIG)
-  -D, --deduplicate           deduplicate objects based on all fields
-  -e, --extended              add two additional fields, file and id to the output
-  -f, --file-regex string     regex to match files in the search dir (default ".*\\.log")
-  -h, --help                  help for twlog-who-said
-  -i, --ips-only              only print IP addresses
-  -o, --output string         output format, one of 'json' or 'text' (default "text")
-  -p, --phrase-regex string   regex to search for that a player said
-  -d, --search-dir string     directory to search for files recursively (default ".")
+  -a, --archive-regex string   regex to match archive files in the search dir (default "\\.(7z|bz2|gz|tar|xz|zip|xz|zst|lz)$")
+  -c, --config string          .env config file path (or via env variable CONFIG)
+  -D, --deduplicate            deduplicate objects based on all fields
+  -e, --extended               add two additional fields, file and id to the output
+  -f, --file-regex string      regex to match files in the search dir (default ".*\\.log$")
+  -h, --help                   help for twlog-who-said
+  -A, --include-archive        search inside archive files
+  -i, --ips-only               only print IP addresses
+  -o, --output string          output format, one of 'json' or 'text' (default "text")
+  -p, --phrase-regex string    regex to search for that a player said
+  -d, --search-dir string      directory to search for files recursively (default ".")
 ```
 
 example:

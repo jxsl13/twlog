@@ -1,2 +1,4 @@
 testdata/*.log
+testdata/*.log.*
 twlog-who-said
+.DS_Store

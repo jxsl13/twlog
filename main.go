@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"os/signal"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/icza/backscanner"
 	"github.com/jxsl13/cli-config-boilerplate/cliconfig"
+	"github.com/jxsl13/twlog-who-said/archive"
 	"github.com/jxsl13/twlog-who-said/config"
 	"github.com/spf13/cobra"
 )
@@ -55,13 +57,14 @@ type CLI struct {
 func (cli *CLI) PrerunE(cmd *cobra.Command) func(*cobra.Command, []string) error {
 	parser := cliconfig.RegisterFlags(&cli.cfg, false, cmd)
 	return func(cmd *cobra.Command, args []string) error {
-		log.SetOutput(cmd.OutOrStdout()) // redirect log output to stdout
+		log.SetOutput(cmd.ErrOrStderr()) // redirect log output to stderr
 		return parser()                  // parse registered commands
 	}
 }
 
 func (cli *CLI) RunE(cmd *cobra.Command, args []string) error {
 	files := make([]string, 0, 16)
+	archives := make([]string, 0, 1)
 
 	entryDir := cli.cfg.SearchDir
 	entryDir, err := filepath.Abs(entryDir)
@@ -69,6 +72,7 @@ func (cli *CLI) RunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get absolute path of search dir: %w", err)
 	}
 
+	// collect log file and archive paths
 	err = filepath.WalkDir(entryDir, func(path string, info os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -76,6 +80,11 @@ func (cli *CLI) RunE(cmd *cobra.Command, args []string) error {
 
 		// skip non-files
 		if !info.Type().IsRegular() {
+			return nil
+		}
+
+		if cli.cfg.IncludeArchives && cli.cfg.ArchiveRegexp.MatchString(path) {
+			archives = append(archives, path)
 			return nil
 		}
 
@@ -90,15 +99,56 @@ func (cli *CLI) RunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	slices.Sort(files)
+	slices.Sort(archives)
 
 	extendedPlayerList := make(PlayerExtendedList, 0, 16)
 
 	for _, file := range files {
-		filePlayers, err := searchPhrase(file, cli.cfg.PhraseRegexp)
+		filePlayers, err := searchPhraseInFile(file, cli.cfg.PhraseRegexp)
 		if err != nil {
 			return fmt.Errorf("failed to search phrase in file %s: %w", file, err)
 		}
 		extendedPlayerList = append(extendedPlayerList, filePlayers...)
+	}
+
+	for _, file := range archives {
+		err = archive.Walk(file, func(path string, info fs.FileInfo, r io.Reader, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if !info.Mode().IsRegular() {
+				// skip dirs & symlinks
+				return nil
+			}
+
+			if !cli.cfg.FileRegexp.MatchString(path) {
+				return nil
+			}
+
+			// matching file in archive
+			// read file into memory only if the file path matches the regex
+			memFile, err := archive.NewFile(r, info.Size())
+			if err != nil {
+				return fmt.Errorf("failed to read file %s from archive: %w", path, err)
+			}
+
+			filePath := fmt.Sprintf("%s@%s", file, path)
+			filePlayers, err := searchPhrase(filePath, memFile, cli.cfg.PhraseRegexp)
+			if err != nil {
+				return fmt.Errorf("failed to search phrase in archive file %s: %w", filePath, err)
+			}
+			extendedPlayerList = append(extendedPlayerList, filePlayers...)
+
+			return nil
+		})
+		if err != nil {
+			if errors.Is(err, archive.ErrUnsupportedArchive) {
+				log.Printf("skipping unsupported archive: %s", file)
+				continue
+			}
+			return fmt.Errorf("failed to walk archive %s: %w", file, err)
+		}
 	}
 
 	if cli.cfg.IPsOnly {
@@ -174,12 +224,17 @@ var (
 	chatLineRegexp = regexp.MustCompile(`chat: (\d+):-?\d+:(.+): (.+)`)
 )
 
-func searchPhrase(file string, phraseRegexp *regexp.Regexp) (PlayerExtendedList, error) {
-	f, err := os.Open(file)
+func searchPhraseInFile(filePath string, phraseRegexp *regexp.Regexp) (PlayerExtendedList, error) {
+	f, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
+
+	return searchPhrase(filePath, f, phraseRegexp)
+}
+
+func searchPhrase(filePath string, f archive.File, phraseRegexp *regexp.Regexp) (PlayerExtendedList, error) {
 
 	players := make(PlayerExtendedList, 0, 16)
 
@@ -227,7 +282,7 @@ func searchPhrase(file string, phraseRegexp *regexp.Regexp) (PlayerExtendedList,
 		}
 
 		players = append(players, PlayerExtended{
-			File:     file,
+			File:     filePath,
 			Nickname: nick,
 			ID:       id,
 			IP:       ip,
@@ -244,7 +299,7 @@ func searchPhrase(file string, phraseRegexp *regexp.Regexp) (PlayerExtendedList,
 	return players, nil
 }
 
-func seekJoinLineBackwards(f *os.File, resetOffset int64, beginSearchOffset int, id int) (ip string, ok bool, err error) {
+func seekJoinLineBackwards(f archive.File, resetOffset int64, beginSearchOffset int, id int) (ip string, ok bool, err error) {
 	defer func() {
 		// return back to the position from which we started searching backwards
 		_, returnErr := f.Seek(resetOffset, io.SeekStart)

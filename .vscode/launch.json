@@ -11,10 +11,21 @@
             "mode": "auto",
             "program": "${workspaceFolder}/main.go",
             "args": [
+                "-A",
                 "-d",
                 "${workspaceFolder}/testdata",
                 "-p",
                 "https?://teiegram\\..+"
+            ]
+        },
+        {
+            "name": "help",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/main.go",
+            "args": [
+                "--help"
             ]
         },
     ]

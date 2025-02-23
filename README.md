@@ -111,6 +111,9 @@ example:
 
 ```bash
 
+# get minimal information about the players that said the phrase 'https?://bot.xyz\..+'
+./twlog who said 'https?://bot.xyz'
+
 # get all information about the players that said the phrase 'https?://bot.xyz\..+'
 ./twlog who said -e 'https?://bot.xyz'
 

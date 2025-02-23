@@ -33,6 +33,7 @@ func NewRootCmd(ctx context.Context) *cobra.Command {
 
 	cmd.PersistentPreRunE = root.PersistentPreRunE(&cmd)
 	cmd.PersistentPostRunE = root.PersistentPostRunE(&cmd)
+	cmd.AddCommand(NewCompletionCommand(&cmd))
 
 	cmd.AddCommand(who.NewWhoCommand(root))
 	return &cmd

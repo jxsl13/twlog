@@ -122,7 +122,7 @@ func Walk(ctx context.Context, cfg WalkConfig, do func(filePath string, file io.
 				wg.Done()
 			}()
 
-			err = archive.Walk(file, func(path string, info fs.FileInfo, r io.Reader, err error) error {
+			err := archive.Walk(file, func(path string, info fs.FileInfo, r io.Reader, err error) error {
 				if err != nil {
 					return err
 				}

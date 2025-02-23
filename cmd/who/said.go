@@ -2,6 +2,7 @@ package who
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -70,9 +71,8 @@ func (cli *SaidContext) RunE(cmd *cobra.Command, args []string) error {
 	)
 
 	err := fswalk.Walk(ctx, cli.root.Walk.ToFSWalkConfig(), func(filePath string, file io.Reader) error {
-		filePlayers, err := searchPhrase(filePath, file, cli.SearchPhraseRegexp)
+		filePlayers, err := searchPhrase(ctx, filePath, file, cli.SearchPhraseRegexp)
 		if err != nil {
-
 			return err
 		}
 		mu.Lock()
@@ -125,7 +125,7 @@ func deduplicate[C comparable](items []C) []C {
 	return unique
 }
 
-func searchPhrase(filePath string, f io.Reader, phraseRegexp *regexp.Regexp) (model.PlayerExtendedList, error) {
+func searchPhrase(ctx context.Context, filePath string, f io.Reader, phraseRegexp *regexp.Regexp) (model.PlayerExtendedList, error) {
 
 	players := make(model.PlayerExtendedList, 0, 16)
 
@@ -134,8 +134,13 @@ func searchPhrase(filePath string, f io.Reader, phraseRegexp *regexp.Regexp) (mo
 
 	// id -> ip
 	playerMap := make(map[int]string, 64)
-
+	var err error
 	for scanner.Scan() {
+		err = ctxutils.Done(ctx)
+		if err != nil {
+			return players, err
+		}
+
 		line := scanner.Text()
 
 		if id, ip, ok := match.Join(line); ok {

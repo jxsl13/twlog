@@ -1,6 +1,6 @@
 testdata/*.log
 testdata/*.log.*
-twlog-who-said
 .DS_Store
 testdata/*/*.log
 testdata/*/*.log.*
+twlog

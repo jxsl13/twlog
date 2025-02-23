@@ -1,11 +1,10 @@
-module github.com/jxsl13/twlog-who-said
+module github.com/jxsl13/twlog
 
 go 1.23.2
 
 require (
 	github.com/bodgit/sevenzip v1.6.0
 	github.com/gabriel-vasile/mimetype v1.4.7
-	github.com/icza/backscanner v0.0.0-20240328210400-b40c3a86dec5
 	github.com/jxsl13/cli-config-boilerplate v0.1.0
 	github.com/klauspost/compress v1.17.9
 	github.com/sorairolake/lzip-go v0.3.5

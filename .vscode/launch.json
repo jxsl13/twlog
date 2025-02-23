@@ -5,16 +5,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Seek who said",
+            "name": "who said",
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/main.go",
+            "program": "${workspaceFolder}/cmd/twlog/main.go",
             "args": [
+                "who",
+                "said",
                 "-A",
                 "-d",
                 "${workspaceFolder}/testdata",
-                "-p",
+                "-o",
+                "json",
                 "https?://teiegram\\..+"
             ]
         },
@@ -23,9 +26,9 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/main.go",
+            "program": "${workspaceFolder}/cmd/twlog/main.go",
             "args": [
-                "--help"
+                "-h"
             ]
         },
     ]

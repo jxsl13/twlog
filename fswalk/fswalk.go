@@ -25,7 +25,7 @@ type WalkConfig struct {
 	Concurrency     int
 }
 
-func Walk(ctx context.Context, cfg WalkConfig, do func(filePath string, file archive.File) error) error {
+func Walk(ctx context.Context, cfg WalkConfig, do func(filePath string, file io.Reader) error) error {
 	cfg.Concurrency = max(1, cfg.Concurrency)
 
 	ctx, cancelCause := context.WithCancelCause(ctx)
@@ -141,15 +141,8 @@ func Walk(ctx context.Context, cfg WalkConfig, do func(filePath string, file arc
 					return nil
 				}
 
-				// matching file in archive
-				// read file into memory only if the file path matches the regex
-				memFile, err := archive.NewFile(r, info.Size())
-				if err != nil {
-					return fmt.Errorf("failed to read file %s from archive: %w", path, err)
-				}
-
 				filePath := fmt.Sprintf("%s@%s", file, path)
-				return do(filePath, memFile)
+				return do(filePath, r)
 			})
 			if err != nil {
 				if errors.Is(err, archive.ErrUnsupportedArchive) {

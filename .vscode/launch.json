@@ -9,7 +9,7 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/twlog/main.go",
+            "program": "${workspaceFolder}/main.go",
             "args": [
                 "who",
                 "said",
@@ -26,7 +26,7 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/twlog/main.go",
+            "program": "${workspaceFolder}/main.go",
             "args": [
                 "-h"
             ]

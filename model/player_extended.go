@@ -1,6 +1,10 @@
 package model
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/jxsl13/twlog/stringutils"
+)
 
 type PlayerExtended struct {
 	File     string `json:"file"`
@@ -8,6 +12,16 @@ type PlayerExtended struct {
 	ID       int    `json:"id"`
 	IP       string `json:"ip"`
 	Text     string `json:"text"`
+}
+
+func NewPlayerExtended(file, nickname string, id int, ip, text string) PlayerExtended {
+	return PlayerExtended{
+		File:     file,
+		Nickname: stringutils.VisualizeInvisible(nickname),
+		ID:       id,
+		IP:       ip,
+		Text:     stringutils.VisualizeInvisible(text),
+	}
 }
 
 func (p PlayerExtended) String() string {

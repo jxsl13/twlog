@@ -1,14 +1,14 @@
-package who
+package what
 
 import (
 	"github.com/jxsl13/twlog/internal/sharedcontext"
 	"github.com/spf13/cobra"
 )
 
-func NewWhoCommand(root *sharedcontext.Root) *cobra.Command {
+func NewWhatCommand(root *sharedcontext.Root) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "who",
-		Short: "who is the subcomand which allows to search for who did something",
+		Use:   "what",
+		Short: "what is the subcomand which allows to search what players did",
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Help()
 		},

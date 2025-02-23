@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/jxsl13/twlog/cmd/what"
 	"github.com/jxsl13/twlog/cmd/who"
 	"github.com/jxsl13/twlog/internal/sharedcontext"
 	"github.com/spf13/cobra"
@@ -36,5 +37,6 @@ func NewRootCmd(ctx context.Context) *cobra.Command {
 	cmd.AddCommand(NewCompletionCommand(&cmd))
 
 	cmd.AddCommand(who.NewWhoCommand(root))
+	cmd.AddCommand(what.NewWhatCommand(root))
 	return &cmd
 }

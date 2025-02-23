@@ -1,4 +1,4 @@
-package who
+package what
 
 import (
 	"bufio"
@@ -28,7 +28,7 @@ func NewSaidCommand(root *sharedcontext.Root) *cobra.Command {
 	}
 
 	cmd := cobra.Command{
-		Use:   "said [text regex]",
+		Use:   "said [nickname regex]",
 		Short: "said searches for what players said in the chat",
 	}
 	cmd.PreRunE = cli.PreRunE(&cmd)
@@ -37,9 +37,9 @@ func NewSaidCommand(root *sharedcontext.Root) *cobra.Command {
 }
 
 type SaidContext struct {
-	root               *sharedcontext.Root
-	cfg                config.SaidConfig
-	SearchPhraseRegexp *regexp.Regexp
+	root                 *sharedcontext.Root
+	cfg                  config.SaidConfig
+	NicknameSearchPhrase *regexp.Regexp
 }
 
 func (cli *SaidContext) PreRunE(cmd *cobra.Command) func(*cobra.Command, []string) error {
@@ -53,10 +53,10 @@ func (cli *SaidContext) PreRunE(cmd *cobra.Command) func(*cobra.Command, []strin
 
 		phrase, err := regexp.Compile(args[0])
 		if err != nil {
-			return fmt.Errorf("could not compile search phrase regex: %w", err)
+			return fmt.Errorf("could not compile nickname search phrase regex: %w", err)
 		}
 
-		cli.SearchPhraseRegexp = phrase
+		cli.NicknameSearchPhrase = phrase
 
 		return parser()
 	}
@@ -72,7 +72,7 @@ func (cli *SaidContext) RunE(cmd *cobra.Command, args []string) error {
 	)
 
 	err := fswalk.Walk(ctx, cli.root.Walk.ToFSWalkConfig(), func(filePath string, file io.Reader) error {
-		filePlayers, err := searchPhrase(ctx, filePath, file, cli.SearchPhraseRegexp)
+		filePlayers, err := searchNicknamePhrase(ctx, filePath, file, cli.NicknameSearchPhrase)
 		if err != nil {
 			return err
 		}
@@ -91,11 +91,11 @@ func (cli *SaidContext) RunE(cmd *cobra.Command, args []string) error {
 	}
 
 	if cli.cfg.IPsOnly {
-		ipList := extendedPlayerList.ToIPList()
+		ipTextList := extendedPlayerList.ToIPTextList()
 		if cli.cfg.Deduplicate {
-			ipList = sliceutils.Deduplicate(ipList)
+			ipTextList = sliceutils.Deduplicate(ipTextList)
 		}
-		return format.Print(cmd, ipList)
+		return format.Print(cmd, ipTextList)
 	} else if cli.cfg.Extended {
 		if cli.cfg.Deduplicate {
 			extendedPlayerList = sliceutils.Deduplicate(extendedPlayerList)
@@ -112,7 +112,7 @@ func (cli *SaidContext) RunE(cmd *cobra.Command, args []string) error {
 	return format.Print(cmd, playerList)
 }
 
-func searchPhrase(ctx context.Context, filePath string, f io.Reader, phraseRegexp *regexp.Regexp) (model.PlayerExtendedList, error) {
+func searchNicknamePhrase(ctx context.Context, filePath string, f io.Reader, nicknameRegexp *regexp.Regexp) (model.PlayerExtendedList, error) {
 
 	players := make(model.PlayerExtendedList, 0, 16)
 
@@ -137,7 +137,7 @@ func searchPhrase(ctx context.Context, filePath string, f io.Reader, phraseRegex
 			delete(playerMap, id)
 			continue
 		} else if id, nick, chat, ok := match.Chat(line); ok {
-			if !phraseRegexp.MatchString(chat) {
+			if !nicknameRegexp.MatchString(nick) {
 				continue
 			}
 
@@ -148,7 +148,6 @@ func searchPhrase(ctx context.Context, filePath string, f io.Reader, phraseRegex
 			}
 
 			players = append(players, model.NewPlayerExtended(filePath, nick, id, ip, chat))
-
 		}
 	}
 

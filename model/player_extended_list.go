@@ -33,3 +33,14 @@ func (p PlayerExtendedList) ToIPList() StringList {
 	}
 	return ips
 }
+
+func (p PlayerExtendedList) ToIPTextList() IPTextList {
+	ipTextList := make(IPTextList, 0, len(p))
+	for _, player := range p {
+		ipTextList = append(ipTextList, IPText{
+			IP:   player.IP,
+			Text: player.Text,
+		})
+	}
+	return ipTextList
+}

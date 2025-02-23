@@ -82,7 +82,7 @@ Use "twlog who [command] --help" for more information about a command.
 ```
 
 ```shell
-./twlog who said --help
+$ ./twlog who said --help
 Environment variables:
   DEDUPLICATE    deduplicate objects based on all fields (default: "false")
   EXTENDED       add two additional fields, file and id to the output (default: "false")
